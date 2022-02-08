@@ -2,14 +2,24 @@ package com.dylanvann.fastimage;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.content.ContextWrapper;
 import android.graphics.PorterDuff;
 import android.os.Build;
+import androidx.annotation.NonNull;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.request.Request;
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
@@ -56,7 +66,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
     }
 
     @ReactProp(name = "source")
-    public void setSrc(FastImageViewWithUrl view, @Nullable ReadableMap source) {
+    public void setSrc(final FastImageViewWithUrl view, @Nullable ReadableMap source) {
         if (source == null || !source.hasKey("uri") || isNullOrEmpty(source.getString("uri"))) {
             // Cancel existing requests.
             clearView(view);
@@ -74,7 +84,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         if (imageSource.getUri().toString().length() == 0) {
             ThemedReactContext context = (ThemedReactContext) view.getContext();
             RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-            int viewId = view.getId();
+            final int viewId = view.getId();
             WritableMap event = new WritableNativeMap();
             event.putString("message", "Invalid source prop:" + source);
             eventEmitter.receiveEvent(viewId, REACT_ON_ERROR_EVENT, event);
@@ -110,7 +120,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
 
         ThemedReactContext context = (ThemedReactContext) view.getContext();
         RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
-        int viewId = view.getId();
+        final int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
         if (requestManager != null) {
@@ -124,7 +134,26 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
                     .load(imageSource.getSourceForLoad())
                     .apply(FastImageViewConverter.getOptions(context, imageSource, source))
                     .listener(new FastImageRequestListener(key))
-                    .into(view);
+                    .into(new SimpleTarget<Drawable>() {
+                        @Override
+                        public void onResourceReady(@NonNull Drawable resource,
+                        @androidx.support.annotation.Nullable Transition<? super Drawable> transition) {
+                            if (resource instanceof BitmapDrawable) {
+                            Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+
+                            ThemedReactContext context = (ThemedReactContext) view.getContext();
+                            RCTEventEmitter eventEmitter = context.getJSModule(RCTEventEmitter.class);
+                            WritableMap resourceData = new WritableNativeMap();
+                            resourceData.putInt("width", bitmap.getWidth());
+                            resourceData.putInt("height", bitmap.getHeight());
+                            eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_EVENT, resourceData);
+                            eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_END_EVENT, new WritableNativeMap());
+                            view.setImageDrawable(resource);
+                            } else {
+                                view.setImageDrawable(resource);
+                            }
+                        }
+                    });
         }
     }
 
