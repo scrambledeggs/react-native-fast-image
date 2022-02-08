@@ -137,7 +137,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
                     .into(new SimpleTarget<Drawable>() {
                         @Override
                         public void onResourceReady(@NonNull Drawable resource,
-                        @androidx.support.annotation.Nullable Transition<? super Drawable> transition) {
+                        @androidx.annotation.Nullable Transition<? super Drawable> transition) {
                             if (resource instanceof BitmapDrawable) {
                             Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
 
